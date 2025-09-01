@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>দুর্গাপূজো ষষ্ঠী কাউন্টডাউন</title>
+  <style>
+    :root{
+      --card-pad: 28px;
+      --box-min: 110px;
+      --digit-size: 42px;
+      --digit-height: 56px; /* প্রতিটি ডিজিট লাইনের উচ্চতা */
+      --digit-gap: 6px;
+      --radius: 18px;
+      --glass: rgba(0,0,0,.38);
+      --glass-soft: rgba(255,255,255,.14);
+    }
+
+    *{ box-sizing:border-box; margin:0; padding:0; font-family: "Poppins", system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans Bengali", "Noto Sans", sans-serif; }
+    body{
+      min-height:100svh;
+      display:grid;
+      place-items:center;
+      color:#fff;
+      background: url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRAp1-AFE8x7RPjsnNw0PmpzH2PL9TuVSWxpOrJgjKmAprq2m54d7vu6ng&s')
+        no-repeat center/cover fixed;
+    }
+
+    .wrap{
+      background: var(--glass);
+      backdrop-filter: blur(12px) saturate(120%);
+      padding: calc(var(--card-pad) + 4px) calc(var(--card-pad) + 10px);
+      border-radius: calc(var(--radius) + 2px);
+      box-shadow: 0 12px 36px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
+      text-align:center;
+      max-width:min(980px, 92vw);
+      width:fit-content;
+    }
+    h1{
+      font-size:clamp(20px, 2.2rem, 40px);
+      line-height:1.2;
+      margin-bottom:18px;
+      color:#ffd86b;
+      text-shadow: 0 2px 10px rgba(0,0,0,.55);
+      letter-spacing:.5px;
+    }
+
+    .grid{
+      display:flex;
+      gap:18px;
+      justify-content:center;
+      flex-wrap:wrap;
+    }
+
+    .box{
+      background: var(--glass-soft);
+      backdrop-filter: blur(8px);
+      padding:16px 16px 18px;
+      border-radius: var(--radius);
+      min-width: var(--box-min);
+      box-shadow: 0 8px 22px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:10px;
+    }
+    .label{
+      font-size: .92rem;
+      letter-spacing:.8px;
+      color:#ffd86b;
+      opacity:.95;
+    }
+
+    /* ===== Roller digits ===== */
+    .roller{
+      display:flex;
+      gap: var(--digit-gap);
+      align-items:center;
+      justify-content:center;
+      height: var(--digit-height);
+      /* ক্লিপ করে শুধু এক লাইনের উচ্চতা দেখাচ্ছি */
+      overflow:hidden;
+      padding: 2px 4px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.18);
+    }
+    .digit-col{
+      position:relative;
+      width: calc(var(--digit-size) * .75);
+      height: var(--digit-height);
+      overflow: hidden;
+    }
+    .digit-strip{
+      position:absolute;
+      left:0; top:0;
+      will-change: transform;
+      transition: transform .5s cubic-bezier(.2,.7,.2,1.1);
+    }
+    /* reduced motion respect */
+    @media (prefers-reduced-motion: reduce){
+      .digit-strip{ transition:none; }
+    }
+    .num{
+      height: var(--digit-height);
+      display:grid;
+      place-items:center;
+      font-weight:800;
+      font-variant-numeric: tabular-nums;
+      font-size: var(--digit-size);
+      text-shadow: 0 2px 8px rgba(0,0,0,.6);
+      padding-inline: 6px;
+    }
+
+    /* ফুটার/ছোট বার্তা */
+    .sub{
+      margin-top:14px;
+      font-size:.85rem;
+      color:#f6e7b3;
+      opacity:.9;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>দুর্গাপূজো ষষ্ঠী আসছে</h1>
+
+    <section class="grid">
+      <div class="box">
+        <div id="r-days" class="roller" aria-label="Days"></div>
+        <div class="label">দিন</div>
+      </div>
+
+      <div class="box">
+        <div id="r-hours" class="roller" aria-label="Hours"></div>
+        <div class="label">ঘণ্টা</div>
+      </div>
+
+      <div class="box">
+        <div id="r-mins" class="roller" aria-label="Minutes"></div>
+        <div class="label">মিনিট</div>
+      </div>
+
+      <div class="box">
+        <div id="r-secs" class="roller" aria-label="Seconds"></div>
+        <div class="label">সেকেন্ড</div>
+      </div>
+    </section>
+
+    <div class="sub">তারিখ: ২৮ সেপ্টেম্বর ২০২৫, ০০:০০:০০</div>
+  </main>
+
+  <script>
+    // ========== Utils: Roller Digit ==========
+    /**
+     * একটি রোলার বানায়: নির্দিষ্ট সংখ্যা-সংখ্যক ডিজিট (padLength)।
+     * প্রতিটি ডিজিট 0-9 নম্বরের স্ট্রিপ, যেটি translateY করে স্ক্রল হয়।
+     */
+    function createRoller(container, padLength=2){
+      container.innerHTML = ""; // reset
+      const cols = [];
+      for(let i=0;i<padLength;i++){
+        const col = document.createElement('div');
+        col.className = 'digit-col';
+
+        const strip = document.createElement('div');
+        strip.className = 'digit-strip';
+
+        // 0..9 সংখ্যা জেনারেট
+        for(let n=0;n<=9;n++){
+          const cell = document.createElement('div');
+          cell.className = 'num';
+          cell.textContent = n;
+          strip.appendChild(cell);
+        }
+
+        // লুপিং স্মুথ করতে আরেকবার 0..9 যোগ করা (ঐচ্ছিক, এখানে প্রয়োজন নেই)
+        // for(let n=0;n<=9;n++){ ... }
+
+        col.appendChild(strip);
+        container.appendChild(col);
+        cols.push({ col, strip, value: 0 });
+      }
+      return {
+        cols,
+        set(value){
+          const s = String(value);
+          // বামদিকে শূন্য ভরে নির্দিষ্ট দৈর্ঘ্য রক্ষা
+          const padded = s.padStart(cols.length, '0').slice(-cols.length);
+          // প্রতিটি ডিজিট আপডেট
+          [...padded].forEach((ch, idx)=>{
+            const digit = parseInt(ch, 10);
+            const { strip } = cols[idx];
+            // লক্ষ্য translateY: digit * height
+            const h = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--digit-height')) || 56;
+            const targetY = -digit * h;
+            // যদি আগের ভ্যালু ভিন্ন হয় তবেই অ্যানিমেট হবে
+            if (cols[idx].value !== digit){
+              strip.style.transform = `translateY(${targetY}px)`;
+              cols[idx].value = digit;
+            }
+          });
+        }
+      };
+    }
+
+    // ========== Countdown Logic ==========
+    // ষষ্ঠী: 28 Sept 2025 00:00:00 Asia/Kolkata (লোকালের ক্লক ব্যবহার)
+    const targetDate = new Date("September 28, 2025 00:00:00").getTime();
+
+    // রোলার ইনিশিয়ালাইজ: Days(3), H(2), M(2), S(2)
+    const rDays  = createRoller(document.getElementById('r-days'), 3);
+    const rHours = createRoller(document.getElementById('r-hours'), 2);
+    const rMins  = createRoller(document.getElementById('r-mins'), 2);
+    const rSecs  = createRoller(document.getElementById('r-secs'), 2);
+
+    function update(){
+      const now = Date.now();
+      const diff = targetDate - now;
+
+      if (diff <= 0){
+        rDays.set(0); rHours.set(0); rMins.set(0); rSecs.set(0);
+        document.querySelector('h1').textContent = "শুভ ষষ্ঠী! 🎉";
+        return;
+      }
+
+      const d = Math.floor(diff / (1000*60*60*24));
+      const h = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
+      const m = Math.floor((diff % (1000*60*60)) / (1000*60));
+      const s = Math.floor((diff % (1000*60)) / 1000);
+
+      // রোলারে সেট (প্রতিবার কেবল বদলানো ডিজিটগুলো স্মুথ স্ক্রল হবে)
+      rDays.set(d);
+      rHours.set(h);
+      rMins.set(m);
+      rSecs.set(s);
+    }
+
+    // প্রথমে একবার চালাও, তারপর প্রতি সেকেন্ডে
+    update();
+    const t = setInterval(update, 1000);
+
+    // ট্যাব হিডেন→ভিজিবল হলে আবার সিঙ্ক
+    document.addEventListener('visibilitychange', ()=>{
+      if (!document.hidden) update();
+    });
+  </script>
+</body>
+  </html>
+        
